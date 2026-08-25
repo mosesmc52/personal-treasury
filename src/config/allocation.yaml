@@ -1,0 +1,35 @@
+version: 1
+
+settings:
+  minimum_allocation: 10
+  round_to: 1
+  maximum_total_allocation: 5000
+
+accounts:
+  checking:
+    name: Checking
+    type: minimum
+    target: 4000
+    priority: 10
+
+  emergency_fund:
+    name: Emergency Fund
+    type: target
+    target: 20000
+    priority: 20
+
+  alpaca:
+    name: Alpaca
+    type: percentage
+    percentage: 0.70
+    priority: 30
+
+  long_term_savings:
+    name: Long-Term Savings
+    type: percentage
+    percentage: 0.30
+    priority: 30
+
+  other:
+    name: Other Account
+    type: ignore
