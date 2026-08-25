@@ -1,9 +1,0 @@
-{
-    "available_cash": 3000,
-    "balances": {
-      "checking": 8000,
-      "emergency_fund": 19500,
-      "alpaca": 50000,
-      "long_term_savings": 12000
-    }
-  }
