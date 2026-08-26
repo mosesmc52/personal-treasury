@@ -73,6 +73,21 @@ Allocation rules are:
 
 Lower priority numbers are processed first. `minimum_allocation`, `round_to`, `maximum_total_allocation`, and optional per-account caps are validated and applied using Decimal arithmetic. Allocation policy does not contain current balances.
 
+## Docker and GitHub Actions
+
+The CI workflow builds and pushes the image to GHCR on pushes to `main`. Configure these GitHub Actions environment values in the `main` environment:
+
+- Secrets: `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ACCESS_TOKEN`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `REPORT_FROM_EMAIL`, and `REPORT_TO_EMAIL`.
+- Variables: `PLAID_ENV` and `AWS_REGION`.
+
+The container runs the one-shot daily command:
+
+```bash
+python -m personal_treasury.cli daily --email
+```
+
+The Docker Compose CI file passes the environment variables at runtime; credentials are not baked into the image. The image exits after the scheduled job completes, so scheduling should be handled by the deployment platform.
+
 ## Testing
 
 ```bash

@@ -1,0 +1,5 @@
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Run the Personal Treasury daily job at 6:00 PM Eastern time.
+0 18 * * * root /app/run.sh >> /var/log/cron.log 2>&1
