@@ -11,7 +11,13 @@ poetry install
 cp .env.example .env
 ```
 
-Create a Plaid developer account, create a Sandbox Item, and obtain an access token. V1 expects that token in `PLAID_ACCESS_TOKEN`; it does not implement Plaid Link. A later setup utility can create a link token, open Link, receive a public token, and exchange it for an access token.
+Create a Plaid developer account, create one Plaid Item per institution, and obtain an access token for each. V1 expects named tokens in `PLAID_ACCESS_TOKENS_JSON`; it does not implement Plaid Link. A later setup utility can create link tokens, open Plaid Link, receive public tokens, and exchange them for access tokens.
+
+Example:
+
+```env
+PLAID_ACCESS_TOKENS_JSON={"chase":"access-production-...","capital_one":"access-production-..."}
+```
 
 Set the variables in `.env`. `PLAID_ENV` is normally `sandbox` for development and may be `development` or `production`. AWS SES must be configured with credentials permitted to send from `REPORT_FROM_EMAIL`; SES sandbox accounts also require verified recipients.
 
@@ -28,7 +34,7 @@ poetry run python -m personal_treasury.cli monthly --as-of 2026-08-23 --email
 
 For a daily scheduled run, use `daily`. It synchronizes transactions every day, generates and emails a weekly report on Sunday by default, and generates a monthly report on the last calendar day of the month. Pass `--weekly-day monday` (or another weekday) to change the weekly report day. Monthly email delivery is opt-in with `--email`; without it, the monthly report is still printed and saved locally.
 
-Reports are saved under `data/reports/`. The cursor is `data/plaid_state.json` and the normalized transaction cache is `data/transactions.json`. These financial files are ignored by git. If `REPORT_TO_EMAIL` is absent, the report is still generated, saved, and printed, with email delivery skipped.
+Reports are saved under `data/reports/`. The per-Item cursors are stored in `data/plaid_state.json` and the combined normalized transaction cache is `data/transactions.json`. These financial files are ignored by git. If `REPORT_TO_EMAIL` is absent, the report is still generated, saved, and printed, with email delivery skipped.
 
 Plaid amounts are positive when money leaves an account and negative when it enters one. The classifier treats ordinary purchases as spending, excludes pending transactions, income, internal transfers, and credit-card payments, and lets refunds reduce spending. Capital gains are not treated as income; the reported savings rate is cash-flow based.
 
@@ -77,7 +83,7 @@ Lower priority numbers are processed first. `minimum_allocation`, `round_to`, `m
 
 The CI workflow builds and pushes the image to GHCR on pushes to `main`. Configure these GitHub Actions environment values in the `main` environment:
 
-- Secrets: `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ACCESS_TOKEN`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `REPORT_FROM_EMAIL`, and `REPORT_TO_EMAIL`.
+- Secrets: `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ACCESS_TOKENS_JSON`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `REPORT_FROM_EMAIL`, and `REPORT_TO_EMAIL`.
 - Variables: `PLAID_ENV` and `AWS_REGION`.
 
 The container runs the one-shot daily command:

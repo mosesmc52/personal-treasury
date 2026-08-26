@@ -41,4 +41,3 @@ def save_state(state, path="data/plaid_state.json"):
 
 def save_cache(cache, path="data/transactions.json"):
     atomic_write_json(path, cache)
-

@@ -13,10 +13,11 @@ def _value(obj, key, default=None):
     return getattr(obj, key, default)
 
 
-def normalize_transaction(transaction):
+def normalize_transaction(transaction, item_key=None):
     pfc = _value(transaction, "personal_finance_category") or {}
     return {
         "transaction_id": _value(transaction, "transaction_id"),
+        "item_key": item_key,
         "account_id": _value(transaction, "account_id"),
         "date": str(_value(transaction, "date")) if _value(transaction, "date") else None,
         "authorized_date": str(_value(transaction, "authorized_date")) if _value(transaction, "authorized_date") else None,
@@ -36,35 +37,42 @@ def _sync_response(api, access_token, cursor):
     return api.transactions_sync(TransactionsSyncRequest(access_token=access_token, cursor=cursor) if cursor else TransactionsSyncRequest(access_token=access_token))
 
 
-def sync_transactions(api=None, access_token=None, state_path="data/plaid_state.json", cache_path="data/transactions.json"):
+def sync_transactions(api=None, access_tokens=None, state_path="data/plaid_state.json", cache_path="data/transactions.json"):
     logger.info("Starting Plaid sync")
     if api is None:
-        api, access_token = create_plaid_client()
+        api, access_tokens = create_plaid_client()
+    if not isinstance(access_tokens, dict) or not access_tokens:
+        raise ValueError("At least one Plaid access token is required")
     state, original_cache = load_state(state_path), load_cache(cache_path)
     cache = dict(original_cache)
-    cursor = state.get("cursor")
-    added = modified = removed = 0
+    cursors = state.get("cursors", {})
+    if not isinstance(cursors, dict):
+        raise ValueError("Plaid state cursors must be a mapping")
+    new_cursors = dict(cursors)
+    total_added = total_modified = total_removed = 0
     try:
-        while True:
-            response = _sync_response(api, access_token, cursor)
-            for item in _value(response, "added", []) or []:
-                cache[_value(item, "transaction_id")] = normalize_transaction(item); added += 1
-            for item in _value(response, "modified", []) or []:
-                cache[_value(item, "transaction_id")] = normalize_transaction(item); modified += 1
-            for item in _value(response, "removed", []) or []:
-                transaction_id = _value(item, "transaction_id")
-                cache.pop(transaction_id, None); removed += 1
-            cursor = _value(response, "next_cursor", cursor)
-            if not _value(response, "has_more", False):
-                break
+        for item_key, access_token in access_tokens.items():
+            cursor = cursors.get(item_key)
+            while True:
+                response = _sync_response(api, access_token, cursor)
+                for item in _value(response, "added", []) or []:
+                    cache[_value(item, "transaction_id")] = normalize_transaction(item, item_key); total_added += 1
+                for item in _value(response, "modified", []) or []:
+                    cache[_value(item, "transaction_id")] = normalize_transaction(item, item_key); total_modified += 1
+                for item in _value(response, "removed", []) or []:
+                    transaction_id = _value(item, "transaction_id")
+                    cache.pop(transaction_id, None); total_removed += 1
+                cursor = _value(response, "next_cursor", cursor)
+                if not _value(response, "has_more", False):
+                    break
+            new_cursors[item_key] = cursor or ""
         atomic_write_json(cache_path, cache)
-        atomic_write_json(state_path, {"cursor": cursor or ""})
+        atomic_write_json(state_path, {"cursors": new_cursors})
     except Exception as exc:
         raise RuntimeError(f"Plaid transaction sync failed: {exc}") from exc
-    logger.info("Added %d transactions, modified %d, removed %d; saved %d total", added, modified, removed, len(cache))
+    logger.info("Added %d transactions, modified %d, removed %d; saved %d total across %d Plaid Items", total_added, total_modified, total_removed, len(cache), len(access_tokens))
     return list(cache.values())
 
 
 def load_transactions(path="data/transactions.json"):
     return list(load_cache(path).values())
-
