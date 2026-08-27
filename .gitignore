@@ -1,4 +1,5 @@
 .env
+config/allocation.yaml
 .venv/
 __pycache__/
 *.py[cod]
