@@ -131,7 +131,11 @@ def update_allocation_state(state_path="data/allocation_state.json", income=0):
         raise ValueError("income must be a valid number") from exc
     if income_amount < 0:
         raise ValueError("income cannot be negative")
-    available_cash = Decimal(str(current_state.get("available_cash", 0))) + income_amount
+    # PAYCHECK_INCOME represents the exact available amount for this run.
+    # Setting rather than incrementing keeps daily scheduled syncs from
+    # double-counting it.
+    available_cash = (income_amount if income_amount else
+                      Decimal(str(current_state.get("available_cash", 0))))
     state = {
         "available_cash": float(available_cash),
         "balances": dict(current_state.get("balances", {})),

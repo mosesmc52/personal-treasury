@@ -83,7 +83,7 @@ On payday, a net paycheck can be added to the allocation pool with `--income`:
 poetry run python -m personal_treasury.cli sync --income 2500
 ```
 
-This refreshes account balances and adds `$2,500` to the existing `available_cash` in `data/allocation_state.json`. Use the option only once per paycheck; it is not a recurring income setting. Use net deposited income, after reserving money for bills and immediate spending.
+This refreshes account balances and sets `available_cash` to exactly the paycheck amount (`$2,500` in this example). The value is replaced rather than added, so repeated daily syncs do not double-count the paycheck. Use net deposited income, after reserving money for bills and immediate spending.
 
 Alternatively, set `PAYCHECK_INCOME` in `.env`; it is used as the default when `--income` is omitted:
 
@@ -91,7 +91,7 @@ Alternatively, set `PAYCHECK_INCOME` in `.env`; it is used as the default when `
 PAYCHECK_INCOME=2500
 ```
 
-Because `.env` is loaded on every run, clear this value immediately after syncing the paycheck. Otherwise a scheduled daily sync will add it repeatedly. An explicit `--income` value takes precedence over `PAYCHECK_INCOME`.
+Because `.env` is loaded on every run, `PAYCHECK_INCOME` remains safe for daily scheduled syncs: it resets the pool to two paychecks instead of adding repeatedly. An explicit `--income` value takes precedence over `PAYCHECK_INCOME`.
 
 Allocation rules are:
 

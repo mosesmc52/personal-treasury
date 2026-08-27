@@ -80,7 +80,7 @@ def main(argv=None):
     parser.add_argument("--email", action="store_true", help="Send the generated report by email")
     parser.add_argument("--config", default="config/allocation.yaml", help="Allocation policy YAML path")
     parser.add_argument("--state", default="data/allocation_state.json", help="Allocation financial-state JSON path")
-    parser.add_argument("--income", type=float, default=None, help="Net income to add to available_cash for this run")
+    parser.add_argument("--income", type=float, default=None, help="Net paycheck amount; sets available_cash to this amount")
     args = parser.parse_args(argv)
     as_of = args.as_of or date.today()
     income = args.income
