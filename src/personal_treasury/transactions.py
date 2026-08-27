@@ -13,11 +13,12 @@ def _value(obj, key, default=None):
     return getattr(obj, key, default)
 
 
-def normalize_transaction(transaction, item_key=None):
+def normalize_transaction(transaction, item_key=None, account_name=None):
     pfc = _value(transaction, "personal_finance_category") or {}
     return {
         "transaction_id": _value(transaction, "transaction_id"),
         "item_key": item_key,
+        "account_name": account_name,
         "account_id": _value(transaction, "account_id"),
         "date": str(_value(transaction, "date")) if _value(transaction, "date") else None,
         "authorized_date": str(_value(transaction, "authorized_date")) if _value(transaction, "authorized_date") else None,
@@ -37,6 +38,18 @@ def _sync_response(api, access_token, cursor):
     return api.transactions_sync(TransactionsSyncRequest(access_token=access_token, cursor=cursor) if cursor else TransactionsSyncRequest(access_token=access_token))
 
 
+def _account_names(api, access_token):
+    """Return account display names without exposing account identifiers in reports."""
+    try:
+        from plaid.model.accounts_get_request import AccountsGetRequest
+        response = api.accounts_get(AccountsGetRequest(access_token=access_token))
+        return {_value(account, "account_id"): _value(account, "name") or _value(account, "official_name") for account in (_value(response, "accounts", []) or [])}
+    except Exception:
+        # Account names improve presentation but should not prevent transaction sync.
+        logger.warning("Could not retrieve account names for one Plaid Item")
+        return {}
+
+
 def sync_transactions(api=None, access_tokens=None, state_path="data/plaid_state.json", cache_path="data/transactions.json"):
     logger.info("Starting Plaid sync")
     if api is None:
@@ -53,12 +66,20 @@ def sync_transactions(api=None, access_tokens=None, state_path="data/plaid_state
     try:
         for item_key, access_token in access_tokens.items():
             cursor = cursors.get(item_key)
+            account_names = _account_names(api, access_token)
+            # Backfill names on transactions cached before account-name lookup
+            # was added. Keep the Plaid account ID only as internal metadata.
+            for cached in cache.values():
+                if cached.get("item_key") == item_key:
+                    name = account_names.get(cached.get("account_id"))
+                    if name:
+                        cached["account_name"] = name
             while True:
                 response = _sync_response(api, access_token, cursor)
                 for item in _value(response, "added", []) or []:
-                    cache[_value(item, "transaction_id")] = normalize_transaction(item, item_key); total_added += 1
+                    cache[_value(item, "transaction_id")] = normalize_transaction(item, item_key, account_names.get(_value(item, "account_id"))); total_added += 1
                 for item in _value(response, "modified", []) or []:
-                    cache[_value(item, "transaction_id")] = normalize_transaction(item, item_key); total_modified += 1
+                    cache[_value(item, "transaction_id")] = normalize_transaction(item, item_key, account_names.get(_value(item, "account_id"))); total_modified += 1
                 for item in _value(response, "removed", []) or []:
                     transaction_id = _value(item, "transaction_id")
                     cache.pop(transaction_id, None); total_removed += 1

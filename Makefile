@@ -1,4 +1,4 @@
-.PHONY: allocate weekly monthly reports
+.PHONY: allocate weekly monthly reports plaid-link plaid-items plaid-sync
 
 CONFIG ?= config/allocation.yaml
 STATE ?= data/allocation_state.json

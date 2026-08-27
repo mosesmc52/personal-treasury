@@ -21,8 +21,8 @@ jobs:
       AWS_REGION: ${{ vars.AWS_REGION }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      REPORT_FROM_EMAIL: ${{ secrets.REPORT_FROM_EMAIL }}
-      REPORT_TO_EMAIL: ${{ secrets.REPORT_TO_EMAIL }}
+      FROM_ADDRESS: ${{ secrets.FROM_ADDRESS }}
+      TO_ADDRESSES: ${{ secrets.TO_ADDRESSES }}
 
     steps:
       - uses: actions/checkout@v4

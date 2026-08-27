@@ -19,7 +19,7 @@ Example:
 PLAID_ACCESS_TOKENS_JSON={"chase":"access-production-...","capital_one":"access-production-..."}
 ```
 
-Set the variables in `.env`. `PLAID_ENV` is normally `sandbox` for development and may be `development` or `production`. AWS SES must be configured with credentials permitted to send from `REPORT_FROM_EMAIL`; SES sandbox accounts also require verified recipients.
+Set the variables in `.env`. `PLAID_ENV` is normally `sandbox` for development and may be `development` or `production`. AWS SES must be configured with credentials permitted to send from `FROM_ADDRESS`; SES sandbox accounts also require verified recipients. Put multiple recipients in `TO_ADDRESSES`, separated by commas.
 
 ## Running
 
@@ -34,9 +34,11 @@ poetry run python -m personal_treasury.cli monthly --as-of 2026-08-23 --email
 
 For a daily scheduled run, use `daily`. It synchronizes transactions every day, generates and emails a weekly report on Sunday by default, and generates a monthly report on the last calendar day of the month. Pass `--weekly-day monday` (or another weekday) to change the weekly report day. Monthly email delivery is opt-in with `--email`; without it, the monthly report is still printed and saved locally.
 
-Reports are saved under `data/reports/`. The per-Item cursors are stored in `data/plaid_state.json` and the combined normalized transaction cache is `data/transactions.json`. These financial files are ignored by git. If `REPORT_TO_EMAIL` is absent, the report is still generated, saved, and printed, with email delivery skipped.
+Reports are saved under `data/reports/`. The per-Item cursors are stored in `data/plaid_state.json` and the combined normalized transaction cache is `data/transactions.json`. These financial files are ignored by git. If `TO_ADDRESSES` is absent, the report is still generated, saved, and printed, with email delivery skipped.
 
 Plaid amounts are positive when money leaves an account and negative when it enters one. The classifier treats ordinary purchases as spending, excludes pending transactions, income, internal transfers, and credit-card payments, and lets refunds reduce spending. Capital gains are not treated as income; the reported savings rate is cash-flow based.
+
+Weekly and monthly reports also include total cash flow and cash flow by account. Positive Plaid amounts are shown as outflows and negative amounts as inflows. Reports use the named access-token keys (for example, `nasafcu`, `ally`, and `chime`) as account headings. Pending transactions are excluded from these account cash-flow totals.
 
 ## Allocation Engine
 
@@ -83,7 +85,7 @@ Lower priority numbers are processed first. `minimum_allocation`, `round_to`, `m
 
 The CI workflow builds and pushes the image to GHCR on pushes to `main`. Configure these GitHub Actions environment values in the `main` environment:
 
-- Secrets: `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ACCESS_TOKENS_JSON`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `REPORT_FROM_EMAIL`, and `REPORT_TO_EMAIL`.
+- Secrets: `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ACCESS_TOKENS_JSON`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `FROM_ADDRESS`, and `TO_ADDRESSES`.
 - Variables: `PLAID_ENV` and `AWS_REGION`.
 
 The container runs the one-shot daily command:

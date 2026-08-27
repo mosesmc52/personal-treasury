@@ -16,8 +16,8 @@ class Settings:
     aws_region: str = ""
     aws_access_key_id: str = ""
     aws_secret_access_key: str = ""
-    report_from_email: str = ""
-    report_to_email: str = ""
+    from_address: str = ""
+    to_addresses: tuple[str, ...] = ()
 
 
 def get_settings() -> Settings:
@@ -36,6 +36,6 @@ def get_settings() -> Settings:
         aws_region=os.getenv("AWS_REGION", ""),
         aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID", ""),
         aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", ""),
-        report_from_email=os.getenv("REPORT_FROM_EMAIL", ""),
-        report_to_email=os.getenv("REPORT_TO_EMAIL", ""),
+        from_address=os.getenv("FROM_ADDRESS", ""),
+        to_addresses=tuple(address.strip() for address in os.getenv("TO_ADDRESSES", "").split(",") if address.strip()),
     )

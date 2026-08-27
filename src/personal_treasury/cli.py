@@ -18,7 +18,7 @@ WEEKDAYS = {name.lower(): number for number, name in enumerate(("monday", "tuesd
 
 def _email(subject, content):
     try:
-        send_report(subject, content)
+        send_report(subject, content, html=True)
     except Exception as exc:
         logging.error("Email delivery failed: %s", exc)
         return 1
