@@ -1,8 +1,11 @@
-.PHONY: allocate weekly monthly reports plaid-link plaid-items plaid-sync
+.PHONY: sync allocate weekly monthly reports plaid-link plaid-items plaid-sync
 
 CONFIG ?= config/allocation.yaml
 STATE ?= data/allocation_state.json
 WEEKLY_DAY ?= sunday
+
+sync:
+	poetry run python -m personal_treasury.cli sync
 
 allocate:
 	poetry run python -m personal_treasury.cli allocate \

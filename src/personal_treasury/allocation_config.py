@@ -34,6 +34,7 @@ class AccountAllocationRule:
     percentage: Decimal | None = None
     plaid_account_id: str | None = None
     maximum_allocation_per_run: Decimal | None = None
+    monthly_amount: Decimal | None = None
 
 
 @dataclass(frozen=True)
@@ -61,6 +62,7 @@ def _validate_and_build_rule(key, values):
     target = _decimal(values["target"], f"accounts.{key}.target") if "target" in values else None
     percentage = _decimal(values["percentage"], f"accounts.{key}.percentage") if "percentage" in values else None
     maximum = _decimal(values["maximum_allocation_per_run"], f"accounts.{key}.maximum_allocation_per_run") if "maximum_allocation_per_run" in values else None
+    monthly_amount = _decimal(values["monthly_amount"], f"accounts.{key}.monthly_amount") if "monthly_amount" in values else None
     if rule_type in {"minimum", "target"} and target is None:
         raise ValueError(f"accounts.{key}: {rule_type} rule requires target")
     if target is not None and target < 0:
@@ -71,8 +73,10 @@ def _validate_and_build_rule(key, values):
         raise ValueError(f"accounts.{key}.percentage must be between 0 and 1")
     if maximum is not None and maximum < 0:
         raise ValueError(f"accounts.{key}.maximum_allocation_per_run cannot be negative")
+    if monthly_amount is not None and monthly_amount < 0:
+        raise ValueError(f"accounts.{key}.monthly_amount cannot be negative")
     external_id = values.get("plaid_account_id", values.get("external_account_id"))
-    return AccountAllocationRule(key, name, rule_type, priority, target, percentage, external_id, maximum)
+    return AccountAllocationRule(key, name, rule_type, priority, target, percentage, external_id, maximum, monthly_amount)
 
 
 def load_allocation_config(path="config/allocation.yaml"):

@@ -78,13 +78,15 @@ def calculate_allocation(config: AllocationConfig, balances, available_cash):
         for rule in sorted(fixed, key=lambda item: item.key):
             balance = balances.get(rule.key, Decimal("0"))
             deficit = max(rule.target - balance, Decimal("0"))
-            raw = min(deficit, remaining)
+            desired = rule.monthly_amount if rule.monthly_amount is not None else deficit
+            raw = min(deficit, desired, remaining)
             allocation = _bounded_round(raw, min(deficit, remaining), settings.round_to)
             if allocation and allocation < settings.minimum_allocation:
                 allocation = Decimal("0")
                 reason = "Required allocation is below minimum_allocation"
             elif allocation:
-                reason = f"Restore {rule.type} balance to {rule.target}"
+                reason = (f"Contribute up to {rule.monthly_amount} monthly toward {rule.target}"
+                          if rule.monthly_amount is not None else f"Restore {rule.type} balance to {rule.target}")
             else:
                 reason = "Balance already satisfies target" if deficit == 0 else "No cash remains"
             recommendations[rule.key] = AllocationRecommendation(rule.key, rule.name, rule.type, rule.priority, balance, allocation, balance + allocation, reason, rule.percentage, rule.target)
@@ -102,6 +104,8 @@ def calculate_allocation(config: AllocationConfig, balances, available_cash):
         for rule in percentage_rules:
             balance = balances.get(rule.key, Decimal("0"))
             raw = pool * rule.percentage
+            if rule.target is not None:
+                raw = min(raw, max(rule.target - balance, Decimal("0")))
             allocation = _round(raw, settings.round_to)
             if allocation > pool:
                 allocation = (pool // settings.round_to) * settings.round_to
@@ -109,6 +113,9 @@ def calculate_allocation(config: AllocationConfig, balances, available_cash):
                 allocation = rule.maximum_allocation_per_run
                 blocked = True
                 reason = f"Capped by maximum_allocation_per_run ({rule.maximum_allocation_per_run})"
+            elif rule.target is not None and allocation < _round(pool * rule.percentage, settings.round_to):
+                blocked = True
+                reason = f"Capped at target ({rule.target})"
             elif allocation and allocation < settings.minimum_allocation:
                 allocation = Decimal("0")
                 blocked = True

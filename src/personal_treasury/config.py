@@ -18,6 +18,9 @@ class Settings:
     aws_secret_access_key: str = ""
     from_address: str = ""
     to_addresses: tuple[str, ...] = ()
+    alpaca_api_key: str = ""
+    alpaca_secret_key: str = ""
+    alpaca_paper: bool = True
 
 
 def get_settings() -> Settings:
@@ -38,4 +41,7 @@ def get_settings() -> Settings:
         aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", ""),
         from_address=os.getenv("FROM_ADDRESS", ""),
         to_addresses=tuple(address.strip() for address in os.getenv("TO_ADDRESSES", "").split(",") if address.strip()),
+        alpaca_api_key=os.getenv("ALPACA_API_KEY", ""),
+        alpaca_secret_key=os.getenv("ALPACA_SECRET_KEY", ""),
+        alpaca_paper=os.getenv("ALPACA_PAPER", "true").lower() in {"1", "true", "yes"},
     )

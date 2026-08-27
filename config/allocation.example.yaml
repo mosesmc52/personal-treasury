@@ -11,25 +11,18 @@ accounts:
     type: minimum
     target: 4000
     priority: 10
-
-  emergency_fund:
-    name: Emergency Fund
+  savings:
+    name: Savings
     type: target
     target: 20000
     priority: 20
-
-  alpaca:
-    name: Alpaca
+    monthly_amount: 1000
+  investment:
+    name: Investment Account
     type: percentage
-    percentage: 0.70
+    target: 100000
+    percentage: 1.0
     priority: 30
-
-  long_term_savings:
-    name: Long-Term Savings
-    type: percentage
-    percentage: 0.30
-    priority: 30
-
   other:
     name: Other Account
     type: ignore

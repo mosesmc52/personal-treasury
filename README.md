@@ -9,7 +9,10 @@ Python 3.12 and Poetry. Install dependencies with:
 ```bash
 poetry install
 cp .env.example .env
+cp config/allocation.example.yaml config/allocation.yaml
 ```
+
+Edit `config/allocation.yaml` with your private allocation policy. The example is committed as a template, while the working policy is ignored by Git.
 
 Create a Plaid developer account, create one Plaid Item per institution, and obtain an access token for each. V1 expects named tokens in `PLAID_ACCESS_TOKENS_JSON`; it does not implement Plaid Link. A later setup utility can create link tokens, open Plaid Link, receive public tokens, and exchange them for access tokens.
 
@@ -44,16 +47,16 @@ Weekly and monthly reports also include total cash flow and cash flow by account
 
 The allocation engine creates recommendations only. It never moves money and does not call Plaid Transfer, ACH, Alpaca, or any other execution API.
 
-Allocation policy is human-authored YAML in `config/allocation.yaml`. Runtime balances and explicitly available cash are supplied separately as JSON, for example:
+Allocation policy is human-authored YAML in `config/allocation.yaml` (copy `config/allocation.example.yaml` first). Runtime balances and explicitly available cash are supplied separately as JSON, for example:
 
 ```json
 {
   "available_cash": 3000,
   "balances": {
-    "checking": 8500,
-    "emergency_fund": 19500,
+    "nasafcu": 8500,
+    "ally": 19500,
     "alpaca": 50000,
-    "long_term_savings": 12000
+    "chime": 12000
   }
 }
 ```
@@ -72,12 +75,34 @@ poetry run python -m personal_treasury.cli allocate \
 
 The report is printed and saved as `data/reports/allocation-YYYY-MM-DD.txt`. `--email` sends the recommendation through the existing SES helper. The report always states that no money was moved.
 
+The `sync` command refreshes Plaid balances in `data/allocation_state.json` using the named Item keys. It preserves the explicitly supplied `available_cash` value and any non-Plaid balances, such as Alpaca. Every non-ignored account in `config/allocation.yaml` must have a matching balance key. The allocation command fails rather than assuming a missing account has a zero balance.
+
+On payday, a net paycheck can be added to the allocation pool with `--income`:
+
+```bash
+poetry run python -m personal_treasury.cli sync --income 2500
+```
+
+This refreshes account balances and adds `$2,500` to the existing `available_cash` in `data/allocation_state.json`. Use the option only once per paycheck; it is not a recurring income setting. Use net deposited income, after reserving money for bills and immediate spending.
+
+Alternatively, set `PAYCHECK_INCOME` in `.env`; it is used as the default when `--income` is omitted:
+
+```env
+PAYCHECK_INCOME=2500
+```
+
+Because `.env` is loaded on every run, clear this value immediately after syncing the paycheck. Otherwise a scheduled daily sync will add it repeatedly. An explicit `--income` value takes precedence over `PAYCHECK_INCOME`.
+
 Allocation rules are:
 
 - `minimum`: restore an account up to at least its configured balance.
 - `target`: allocate only until the configured target is reached.
 - `percentage`: divide the remaining surplus with other percentage rules at the same priority.
 - `ignore`: exclude the account from allocation.
+
+The sample policy keeps at least $3,000 in NASAFCU, targets $36,000 in Ally savings, and targets $100,000 in Alpaca. Because the scheduled allocation runs on Friday in weeks 2 and 4, Ally is capped at $500 per run and Alpaca at $1,000 per run. NASAFCU's separate $2,000 immediate-spending reserve belongs in the available-cash calculation, not as another allocation destination.
+
+Rules may also use `monthly_amount` for a recurring contribution. For example, Ally can receive `monthly_amount: 1000` before Alpaca (configured as a 100% percentage destination). With $3,000 of available salary, Ally receives $1,000 and Alpaca receives $2,000. Once Ally reaches its target, Alpaca receives the remaining $3,000. `monthly_amount` is a recommendation policy; it does not move money.
 
 Lower priority numbers are processed first. `minimum_allocation`, `round_to`, `maximum_total_allocation`, and optional per-account caps are validated and applied using Decimal arithmetic. Allocation policy does not contain current balances.
 

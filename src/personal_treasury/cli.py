@@ -1,6 +1,7 @@
 import argparse
 import json
 import logging
+import os
 from calendar import monthrange
 from datetime import date, timedelta
 
@@ -9,7 +10,7 @@ from .allocation import calculate_allocation
 from .allocation_config import load_allocation_config
 from .allocation_report import render_allocation_report, save_allocation_report
 from .report import _monthly_period, _weekly_period, generate_monthly_report, generate_weekly_report, save_report
-from .transactions import sync_transactions
+from .transactions import sync_transactions, update_allocation_state
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
@@ -53,6 +54,14 @@ def _run_allocation(config_path, state_path, as_of, email=False):
         state = json.load(state_file)
     if not isinstance(state, dict) or "available_cash" not in state or not isinstance(state.get("balances"), dict):
         raise ValueError("Allocation state must contain available_cash and a balances mapping")
+    required_accounts = {rule.key for rule in config.accounts if rule.type != "ignore"}
+    missing_accounts = sorted(required_accounts - set(state["balances"]))
+    if missing_accounts:
+        raise ValueError(
+            "Allocation state is missing balances for: "
+            + ", ".join(missing_accounts)
+            + ". Update data/allocation_state.json with current values."
+        )
     result = calculate_allocation(config, state["balances"], state["available_cash"])
     content = render_allocation_report(result)
     print(content)
@@ -71,12 +80,21 @@ def main(argv=None):
     parser.add_argument("--email", action="store_true", help="Send the generated report by email")
     parser.add_argument("--config", default="config/allocation.yaml", help="Allocation policy YAML path")
     parser.add_argument("--state", default="data/allocation_state.json", help="Allocation financial-state JSON path")
+    parser.add_argument("--income", type=float, default=None, help="Net income to add to available_cash for this run")
     args = parser.parse_args(argv)
     as_of = args.as_of or date.today()
+    income = args.income
+    if income is None:
+        raw_income = os.getenv("PAYCHECK_INCOME", "")
+        try:
+            income = float(raw_income) if raw_income else 0
+        except ValueError as exc:
+            parser.error("PAYCHECK_INCOME must be a valid number")
     try:
         if args.command == "allocate":
             return _run_allocation(args.config, args.state, as_of, email=args.email)
         transactions = sync_transactions()
+        update_allocation_state(income=income)
         if args.command == "sync":
             print(f"Synchronized {len(transactions)} transactions.")
             return 0

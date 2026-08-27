@@ -1,4 +1,6 @@
 import logging
+import os
+from decimal import Decimal, InvalidOperation
 from datetime import date
 
 from .plaid_client import create_plaid_client
@@ -97,3 +99,70 @@ def sync_transactions(api=None, access_tokens=None, state_path="data/plaid_state
 
 def load_transactions(path="data/transactions.json"):
     return list(load_cache(path).values())
+
+
+def fetch_account_balances(api, access_tokens):
+    """Fetch read-only current balances, grouped by the named Plaid Item."""
+    balances = {}
+    from plaid.model.accounts_get_request import AccountsGetRequest
+
+    for item_key, access_token in access_tokens.items():
+        response = api.accounts_get(AccountsGetRequest(access_token=access_token))
+        total = 0.0
+        for account in _value(response, "accounts", []) or []:
+            account_balances = _value(account, "balances", {}) or {}
+            current = _value(account_balances, "current", 0) or 0
+            total += float(current)
+        balances[item_key] = total
+    return balances
+
+
+def update_allocation_state(state_path="data/allocation_state.json", income=0):
+    """Refresh Plaid balances while preserving explicit available_cash and other balances."""
+    api, access_tokens = create_plaid_client()
+    current_state = {}
+    try:
+        current_state = __import__("json").loads(__import__("pathlib").Path(state_path).read_text())
+    except FileNotFoundError:
+        pass
+    try:
+        income_amount = Decimal(str(income))
+    except (InvalidOperation, ValueError, TypeError) as exc:
+        raise ValueError("income must be a valid number") from exc
+    if income_amount < 0:
+        raise ValueError("income cannot be negative")
+    available_cash = Decimal(str(current_state.get("available_cash", 0))) + income_amount
+    state = {
+        "available_cash": float(available_cash),
+        "balances": dict(current_state.get("balances", {})),
+    }
+    state["balances"].update(fetch_account_balances(api, access_tokens))
+    alpaca_balance = fetch_alpaca_portfolio_value()
+    if alpaca_balance is not None:
+        state["balances"]["alpaca"] = alpaca_balance
+    atomic_write_json(state_path, state)
+    logger.info("Updated allocation state with balances for %d Plaid Items", len(access_tokens))
+    return state
+
+
+def fetch_alpaca_portfolio_value():
+    """Return Alpaca's current portfolio value using its read-only account API."""
+    api_key = os.getenv("ALPACA_API_KEY", "")
+    secret_key = os.getenv("ALPACA_SECRET_KEY", "")
+    if not api_key or not secret_key:
+        logger.info("Alpaca balance refresh skipped: credentials are not configured")
+        return None
+
+    try:
+        from alpaca.trading.client import TradingClient
+
+        paper = os.getenv("ALPACA_PAPER", "true").lower() in {"1", "true", "yes"}
+        account = TradingClient(api_key, secret_key, paper=paper).get_account()
+        portfolio_value = _value(account, "portfolio_value")
+        if portfolio_value is None:
+            raise ValueError("Alpaca account response did not include portfolio_value")
+        value = float(portfolio_value)
+        logger.info("Refreshed Alpaca portfolio value")
+        return value
+    except Exception as exc:
+        raise RuntimeError(f"Could not refresh Alpaca portfolio value: {exc}") from exc
