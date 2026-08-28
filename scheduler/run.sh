@@ -4,6 +4,15 @@ set -euo pipefail
 
 cd /app
 
+# Retrieve the private allocation policy before any scheduled work. The
+# object is intentionally not included in the container image or repository.
+echo "Downloading allocation policy from DigitalOcean Spaces"
+make download-allocation
+
+# Refresh Plaid and Alpaca balances before generating reports or allocation
+# recommendations.
+make sync
+
 # The container timezone is America/New_York, so these dates are Eastern time.
 today_month="$(date +%m)"
 tomorrow_month="$(date -d tomorrow +%m)"
