@@ -110,8 +110,8 @@ Lower priority numbers are processed first. `minimum_allocation`, `round_to`, `m
 
 The CI workflow builds and pushes the image to GHCR on pushes to `main`. Configure these GitHub Actions environment values in the `main` environment:
 
-- Secrets: `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ACCESS_TOKENS_JSON`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `FROM_ADDRESS`, and `TO_ADDRESSES`.
-- Variables: `PLAID_ENV` and `AWS_REGION`.
+- Secrets: `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ACCESS_TOKENS_JSON`, `AWS_SES_ACCESS_KEY_ID`, `AWS_SES_SECRET_ACCESS_KEY`, `FROM_ADDRESS`, and `TO_ADDRESSES`.
+- Variables: `PLAID_ENV` and `AWS_SES_REGION_NAME`.
 
 The container runs the one-shot daily command:
 

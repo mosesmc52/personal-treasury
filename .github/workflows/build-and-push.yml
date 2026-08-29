@@ -18,9 +18,9 @@ jobs:
       PLAID_SECRET: ${{ secrets.PLAID_SECRET }}
       PLAID_ENV: ${{ vars.PLAID_ENV || 'sandbox' }}
       PLAID_ACCESS_TOKENS_JSON: ${{ secrets.PLAID_ACCESS_TOKENS_JSON }}
-      AWS_REGION: ${{ vars.AWS_REGION }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SES_REGION_NAME: ${{ vars.AWS_SES_REGION_NAME }}
+      AWS_SES_ACCESS_KEY_ID: ${{ secrets.AWS_SES_ACCESS_KEY_ID }}
+      AWS_SES_SECRET_ACCESS_KEY: ${{ secrets.AWS_SES_SECRET_ACCESS_KEY }}
       FROM_ADDRESS: ${{ secrets.FROM_ADDRESS }}
       TO_ADDRESSES: ${{ secrets.TO_ADDRESSES }}
       SPACES_KEY: ${{ secrets.SPACES_KEY }}
