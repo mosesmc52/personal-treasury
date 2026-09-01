@@ -9,15 +9,15 @@ logger = logging.getLogger(__name__)
 
 def _weekly_period(as_of):
     as_of = as_of or date.today()
-    monday = as_of - timedelta(days=as_of.weekday() + 7)
-    return monday, monday + timedelta(days=6)
+    # Rolling seven-day window ending on the report date.
+    return as_of - timedelta(days=6), as_of
 
 
 def _monthly_period(as_of):
     as_of = as_of or date.today()
-    first = as_of.replace(day=1) - timedelta(days=1)
-    start = first.replace(day=1)
-    return start, first
+    # Current calendar month through the report date. The scheduler invokes
+    # this on month-end, producing the complete month.
+    return as_of.replace(day=1), as_of
 
 
 def _money(value): return f"${value:,.2f}"

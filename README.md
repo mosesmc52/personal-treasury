@@ -35,7 +35,7 @@ poetry run python -m personal_treasury.cli weekly --as-of 2026-08-23
 poetry run python -m personal_treasury.cli monthly --as-of 2026-08-23 --email
 ```
 
-For a daily scheduled run, use `daily`. It synchronizes transactions every day, generates and emails a weekly report on Sunday by default, and generates a monthly report on the last calendar day of the month. Pass `--weekly-day monday` (or another weekday) to change the weekly report day. Monthly email delivery is opt-in with `--email`; without it, the monthly report is still printed and saved locally.
+For a daily scheduled run, use `daily`. It synchronizes transactions every day, generates and emails a rolling seven-day report on Sunday by default, and generates a current-month report on the last calendar day of the month. Pass `--weekly-day monday` (or another weekday) to change the weekly report day. Monthly email delivery is opt-in with `--email`; without it, the monthly report is still printed and saved locally.
 
 Reports are saved under `data/reports/`. The per-Item cursors are stored in `data/plaid_state.json` and the combined normalized transaction cache is `data/transactions.json`. These financial files are ignored by git. If `TO_ADDRESSES` is absent, the report is still generated, saved, and printed, with email delivery skipped.
 
