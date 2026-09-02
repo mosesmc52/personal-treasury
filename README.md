@@ -37,6 +37,8 @@ poetry run python -m personal_treasury.cli monthly --as-of 2026-08-23 --email
 
 For a daily scheduled run, use `daily`. It synchronizes transactions every day, generates and emails a rolling seven-day report on Sunday by default, and generates a current-month report on the last calendar day of the month. Pass `--weekly-day monday` (or another weekday) to change the weekly report day. Monthly email delivery is opt-in with `--email`; without it, the monthly report is still printed and saved locally.
 
+The container scheduler runs safely from a daily cron. Set `WEEKLY_DAY` (for example `sunday`), `MONTHLY_DAY` (a day number or `last`), `ALLOCATION_DAY_OF_WEEK` (for example `friday`), and `ALLOCATION_WEEKS` (for example `2,4`) to control when each email is sent. Defaults are Sunday, month-end, and Friday weeks 2 and 4. Reports are skipped on all other days.
+
 Reports are saved under `data/reports/`. The per-Item cursors are stored in `data/plaid_state.json` and the combined normalized transaction cache is `data/transactions.json`. These financial files are ignored by git. If `TO_ADDRESSES` is absent, the report is still generated, saved, and printed, with email delivery skipped.
 
 Plaid amounts are positive when money leaves an account and negative when it enters one. The classifier treats ordinary purchases as spending, excludes pending transactions, income, internal transfers, and credit-card payments, and lets refunds reduce spending. Capital gains are not treated as income; the reported savings rate is cash-flow based.
