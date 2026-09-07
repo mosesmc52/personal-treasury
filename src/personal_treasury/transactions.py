@@ -1,7 +1,6 @@
 import logging
 import os
 from decimal import Decimal, InvalidOperation
-from datetime import date
 
 from .plaid_client import create_plaid_client
 from .plaid_state import atomic_write_json, load_cache, load_state
@@ -22,37 +21,60 @@ def normalize_transaction(transaction, item_key=None, account_name=None):
         "item_key": item_key,
         "account_name": account_name,
         "account_id": _value(transaction, "account_id"),
-        "date": str(_value(transaction, "date")) if _value(transaction, "date") else None,
-        "authorized_date": str(_value(transaction, "authorized_date")) if _value(transaction, "authorized_date") else None,
+        "date": (
+            str(_value(transaction, "date")) if _value(transaction, "date") else None
+        ),
+        "authorized_date": (
+            str(_value(transaction, "authorized_date"))
+            if _value(transaction, "authorized_date")
+            else None
+        ),
         "name": _value(transaction, "name", ""),
         "merchant_name": _value(transaction, "merchant_name"),
         "amount": float(_value(transaction, "amount", 0)),
         "pending": bool(_value(transaction, "pending", False)),
         "payment_channel": _value(transaction, "payment_channel"),
-        "category_primary": _value(transaction, "category_primary") or _value(pfc, "primary"),
-        "category_detailed": _value(transaction, "category_detailed") or _value(pfc, "detailed"),
+        "category_primary": _value(transaction, "category_primary")
+        or _value(pfc, "primary"),
+        "category_detailed": _value(transaction, "category_detailed")
+        or _value(pfc, "detailed"),
         "iso_currency_code": _value(transaction, "iso_currency_code"),
     }
 
 
 def _sync_response(api, access_token, cursor):
     from plaid.model.transactions_sync_request import TransactionsSyncRequest
-    return api.transactions_sync(TransactionsSyncRequest(access_token=access_token, cursor=cursor) if cursor else TransactionsSyncRequest(access_token=access_token))
+
+    return api.transactions_sync(
+        TransactionsSyncRequest(access_token=access_token, cursor=cursor)
+        if cursor
+        else TransactionsSyncRequest(access_token=access_token)
+    )
 
 
 def _account_names(api, access_token):
     """Return account display names without exposing account identifiers in reports."""
     try:
         from plaid.model.accounts_get_request import AccountsGetRequest
+
         response = api.accounts_get(AccountsGetRequest(access_token=access_token))
-        return {_value(account, "account_id"): _value(account, "name") or _value(account, "official_name") for account in (_value(response, "accounts", []) or [])}
+        return {
+            _value(account, "account_id"): _value(account, "name")
+            or _value(account, "official_name")
+            for account in (_value(response, "accounts", []) or [])
+        }
     except Exception:
         # Account names improve presentation but should not prevent transaction sync.
         logger.warning("Could not retrieve account names for one Plaid Item")
         return {}
 
 
-def sync_transactions(api=None, access_tokens=None, state_path="data/plaid_state.json", cache_path="data/transactions.json"):
+def sync_transactions(
+    api=None,
+    access_tokens=None,
+    state_path="data/plaid_state.json",
+    cache_path="data/transactions.json",
+):
     logger.info("Starting Plaid sync")
     if api is None:
         api, access_tokens = create_plaid_client()
@@ -79,12 +101,19 @@ def sync_transactions(api=None, access_tokens=None, state_path="data/plaid_state
             while True:
                 response = _sync_response(api, access_token, cursor)
                 for item in _value(response, "added", []) or []:
-                    cache[_value(item, "transaction_id")] = normalize_transaction(item, item_key, account_names.get(_value(item, "account_id"))); total_added += 1
+                    cache[_value(item, "transaction_id")] = normalize_transaction(
+                        item, item_key, account_names.get(_value(item, "account_id"))
+                    )
+                    total_added += 1
                 for item in _value(response, "modified", []) or []:
-                    cache[_value(item, "transaction_id")] = normalize_transaction(item, item_key, account_names.get(_value(item, "account_id"))); total_modified += 1
+                    cache[_value(item, "transaction_id")] = normalize_transaction(
+                        item, item_key, account_names.get(_value(item, "account_id"))
+                    )
+                    total_modified += 1
                 for item in _value(response, "removed", []) or []:
                     transaction_id = _value(item, "transaction_id")
-                    cache.pop(transaction_id, None); total_removed += 1
+                    cache.pop(transaction_id, None)
+                    total_removed += 1
                 cursor = _value(response, "next_cursor", cursor)
                 if not _value(response, "has_more", False):
                     break
@@ -93,7 +122,14 @@ def sync_transactions(api=None, access_tokens=None, state_path="data/plaid_state
         atomic_write_json(state_path, {"cursors": new_cursors})
     except Exception as exc:
         raise RuntimeError(f"Plaid transaction sync failed: {exc}") from exc
-    logger.info("Added %d transactions, modified %d, removed %d; saved %d total across %d Plaid Items", total_added, total_modified, total_removed, len(cache), len(access_tokens))
+    logger.info(
+        "Added %d transactions, modified %d, removed %d; saved %d total across %d Plaid Items",
+        total_added,
+        total_modified,
+        total_removed,
+        len(cache),
+        len(access_tokens),
+    )
     return list(cache.values())
 
 
@@ -122,7 +158,9 @@ def update_allocation_state(state_path="data/allocation_state.json", income=0):
     api, access_tokens = create_plaid_client()
     current_state = {}
     try:
-        current_state = __import__("json").loads(__import__("pathlib").Path(state_path).read_text())
+        current_state = __import__("json").loads(
+            __import__("pathlib").Path(state_path).read_text()
+        )
     except FileNotFoundError:
         pass
     try:
@@ -134,8 +172,11 @@ def update_allocation_state(state_path="data/allocation_state.json", income=0):
     # PAYCHECK_INCOME represents the exact available amount for this run.
     # Setting rather than incrementing keeps daily scheduled syncs from
     # double-counting it.
-    available_cash = (income_amount if income_amount else
-                      Decimal(str(current_state.get("available_cash", 0))))
+    available_cash = (
+        income_amount
+        if income_amount
+        else Decimal(str(current_state.get("available_cash", 0)))
+    )
     state = {
         "available_cash": float(available_cash),
         "balances": dict(current_state.get("balances", {})),
@@ -145,7 +186,9 @@ def update_allocation_state(state_path="data/allocation_state.json", income=0):
     if alpaca_balance is not None:
         state["balances"]["alpaca"] = alpaca_balance
     atomic_write_json(state_path, state)
-    logger.info("Updated allocation state with balances for %d Plaid Items", len(access_tokens))
+    logger.info(
+        "Updated allocation state with balances for %d Plaid Items", len(access_tokens)
+    )
     return state
 
 

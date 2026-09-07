@@ -1,5 +1,5 @@
-import os
 import json
+import os
 from dataclasses import dataclass
 
 from dotenv import load_dotenv
@@ -29,8 +29,13 @@ def get_settings() -> Settings:
         access_tokens = json.loads(raw_tokens) if raw_tokens else {}
     except json.JSONDecodeError as exc:
         raise ValueError("PLAID_ACCESS_TOKENS_JSON must be valid JSON") from exc
-    if not isinstance(access_tokens, dict) or not all(isinstance(key, str) and isinstance(value, str) and value for key, value in access_tokens.items()):
-        raise ValueError("PLAID_ACCESS_TOKENS_JSON must be a non-empty object mapping names to tokens")
+    if not isinstance(access_tokens, dict) or not all(
+        isinstance(key, str) and isinstance(value, str) and value
+        for key, value in access_tokens.items()
+    ):
+        raise ValueError(
+            "PLAID_ACCESS_TOKENS_JSON must be a non-empty object mapping names to tokens"
+        )
     return Settings(
         plaid_client_id=os.getenv("PLAID_CLIENT_ID", ""),
         plaid_secret=os.getenv("PLAID_SECRET", ""),
@@ -40,7 +45,11 @@ def get_settings() -> Settings:
         aws_access_key_id=os.getenv("AWS_SES_ACCESS_KEY_ID", ""),
         aws_secret_access_key=os.getenv("AWS_SES_SECRET_ACCESS_KEY", ""),
         from_address=os.getenv("FROM_ADDRESS", ""),
-        to_addresses=tuple(address.strip() for address in os.getenv("TO_ADDRESSES", "").split(",") if address.strip()),
+        to_addresses=tuple(
+            address.strip()
+            for address in os.getenv("TO_ADDRESSES", "").split(",")
+            if address.strip()
+        ),
         alpaca_api_key=os.getenv("ALPACA_API_KEY", ""),
         alpaca_secret_key=os.getenv("ALPACA_SECRET_KEY", ""),
         alpaca_paper=os.getenv("ALPACA_PAPER", "true").lower() in {"1", "true", "yes"},

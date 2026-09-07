@@ -38,7 +38,6 @@ from __future__ import annotations
 
 import argparse
 import mimetypes
-import os
 import sys
 import time
 from dataclasses import dataclass
@@ -47,6 +46,7 @@ from typing import Optional, Sequence
 
 from botocore.exceptions import ClientError
 from dotenv import find_dotenv, load_dotenv
+
 from .spaces import SpacesClient
 
 load_dotenv(find_dotenv())
