@@ -20,6 +20,11 @@ def _monthly_period(as_of):
     return as_of.replace(day=1), as_of
 
 
+def _month_start_months_ago(value, months):
+    month_index = value.year * 12 + value.month - 1 - months
+    return date(month_index // 12, month_index % 12 + 1, 1)
+
+
 def _money(value):
     return f"${value:,.2f}"
 
@@ -28,7 +33,7 @@ def _pct(value):
     return "n/a" if value is None else f"{value * 100:+.1f}%"
 
 
-def _render(title, summary, previous, period_label):
+def _render(title, summary, previous, period_label, spending_average_lines=()):
     lines = [
         "PERSONAL TREASURY",
         title,
@@ -51,6 +56,7 @@ def _render(title, summary, previous, period_label):
         f"Income:                {_money(summary['total_income'])}",
         f"Net cash flow:         {_money(summary['net_cash_flow'])}",
         f"Transactions:          {summary['transaction_count']}",
+        *spending_average_lines,
         f"Average spending/day:  {_money(summary['average_daily_spending'])}",
         "",
         "TOTAL CASH FLOW",
@@ -93,11 +99,17 @@ def generate_weekly_report(transactions, as_of_date=None):
     previous = get_spending_summary(transactions, prev_start, prev_end)
     if previous["transaction_count"] == 0:
         previous = None
+    four_week_start = end - timedelta(days=27)
+    four_week_summary = get_spending_summary(transactions, four_week_start, end)
     return _render(
         "WEEKLY SPENDING REPORT",
         summary,
         previous,
         f"{start.strftime('%B %-d')} - {end.strftime('%B %-d, %Y')}",
+        (
+            "4-week average spending/day: "
+            f"{_money(four_week_summary['total_spending'] / 28)}",
+        ),
     )
 
 
@@ -109,8 +121,17 @@ def generate_monthly_report(transactions, as_of_date=None):
     previous = get_spending_summary(transactions, prev_start, prev_end)
     if previous["transaction_count"] == 0:
         previous = None
+    three_month_start = _month_start_months_ago(start, 2)
+    three_month_summary = get_spending_summary(transactions, three_month_start, end)
     text = _render(
-        "MONTHLY FINANCIAL REPORT", summary, previous, start.strftime("%B %Y")
+        "MONTHLY FINANCIAL REPORT",
+        summary,
+        previous,
+        start.strftime("%B %Y"),
+        (
+            "3-month average spending/month: "
+            f"{_money(three_month_summary['total_spending'] / 3)}",
+        ),
     )
     return text.replace("Total spending:", "Spending:             ", 1)
 
