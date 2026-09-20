@@ -101,6 +101,12 @@ def generate_weekly_report(transactions, as_of_date=None):
         previous = None
     four_week_start = end - timedelta(days=27)
     four_week_summary = get_spending_summary(transactions, four_week_start, end)
+    four_week_average = four_week_summary["total_spending"] / 28
+    weekly_trend = (
+        (summary["average_daily_spending"] - four_week_average) / four_week_average
+        if four_week_average
+        else None
+    )
     return _render(
         "WEEKLY SPENDING REPORT",
         summary,
@@ -108,7 +114,8 @@ def generate_weekly_report(transactions, as_of_date=None):
         f"{start.strftime('%B %-d')} - {end.strftime('%B %-d, %Y')}",
         (
             "4-week average spending/day: "
-            f"{_money(four_week_summary['total_spending'] / 28)}",
+            f"{_money(four_week_average)}",
+            f"Trend: {_pct(weekly_trend)}",
         ),
     )
 
@@ -123,6 +130,12 @@ def generate_monthly_report(transactions, as_of_date=None):
         previous = None
     three_month_start = _month_start_months_ago(start, 2)
     three_month_summary = get_spending_summary(transactions, three_month_start, end)
+    three_month_average = three_month_summary["total_spending"] / 3
+    monthly_trend = (
+        (summary["total_spending"] - three_month_average) / three_month_average
+        if three_month_average
+        else None
+    )
     text = _render(
         "MONTHLY FINANCIAL REPORT",
         summary,
@@ -130,7 +143,8 @@ def generate_monthly_report(transactions, as_of_date=None):
         start.strftime("%B %Y"),
         (
             "3-month average spending/month: "
-            f"{_money(three_month_summary['total_spending'] / 3)}",
+            f"{_money(three_month_average)}",
+            f"Trend: {_pct(monthly_trend)}",
         ),
     )
     return text.replace("Total spending:", "Spending:             ", 1)

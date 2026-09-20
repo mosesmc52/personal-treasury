@@ -14,6 +14,7 @@ def test_rolling_week_and_missing_comparison():
     assert "August 17 - August 23, 2026" in report
     assert "Previous period comparison unavailable" in report
     assert "4-week average spending/day: $12.50" in report
+    assert "Trend: -20.0%" in report
     assert "Average spending/day:  $10.00" in report
     assert report.index("4-week average spending/day") < report.index(
         "Average spending/day"
@@ -34,3 +35,12 @@ def test_current_month_and_savings_rate():
     )
     assert "August 2026" in report and "Cash-flow savings rate: 75.0%" in report
     assert "3-month average spending/month: $383.33" in report
+    assert "Trend: -34.8%" in report
+
+
+def test_spending_trend_is_unavailable_when_rolling_average_is_zero():
+    weekly = generate_weekly_report([], date(2026, 8, 23))
+    monthly = generate_monthly_report([], date(2026, 8, 23))
+
+    assert "Trend: n/a" in weekly
+    assert "Trend: n/a" in monthly
