@@ -33,7 +33,27 @@ def _pct(value):
     return "n/a" if value is None else f"{value * 100:+.1f}%"
 
 
-def _render(title, summary, previous, period_label, spending_average_lines=()):
+def _signed_money(value):
+    sign = "+" if value >= 0 else "-"
+    return f"{sign}{_money(abs(value))}"
+
+
+def _overview_line(label, value):
+    return f"{label + ':':<39}{value}"
+
+
+def _section_line(label, value):
+    return f"{label:<39}{value}"
+
+
+def _render(
+    title,
+    summary,
+    previous,
+    period_label,
+    period_name,
+    spending_comparison_lines=(),
+):
     lines = [
         "PERSONAL TREASURY",
         title,
@@ -41,52 +61,70 @@ def _render(title, summary, previous, period_label, spending_average_lines=()):
         f"Period: {period_label}",
         "",
         "OVERVIEW",
-        f"Total spending:        {_money(summary['total_spending'])}",
+        _overview_line(
+            f"Spending this {period_name}", _money(summary["total_spending"])
+        ),
     ]
     if previous:
         change = summary["total_spending"] - previous["total_spending"]
         lines += [
-            f"Previous period:       {_money(previous['total_spending'])}",
-            f"Change:                {_money(change)}",
-            f"Change:                {_pct(change / previous['total_spending'] if previous['total_spending'] else None)}",
+            _overview_line(
+                f"Spending last {period_name}", _money(previous["total_spending"])
+            ),
+            _overview_line(f"Change vs last {period_name}", _signed_money(change)),
+            _overview_line(
+                f"Percent change vs last {period_name}",
+                _pct(
+                    change / previous["total_spending"]
+                    if previous["total_spending"]
+                    else None
+                ),
+            ),
         ]
     else:
-        lines += ["Previous period comparison unavailable"]
+        lines += [
+            _overview_line(f"Spending last {period_name}", "unavailable"),
+        ]
     lines += [
-        f"Income:                {_money(summary['total_income'])}",
-        f"Net cash flow:         {_money(summary['net_cash_flow'])}",
-        f"Transactions:          {summary['transaction_count']}",
-        *spending_average_lines,
-        f"Average spending/day:  {_money(summary['average_daily_spending'])}",
+        _overview_line("Income", _money(summary["total_income"])),
+        _overview_line("Net cash flow", _money(summary["net_cash_flow"])),
+        _overview_line("Transactions", summary["transaction_count"]),
+        _overview_line(
+            f"Average spending/day this {period_name}",
+            _money(summary["average_daily_spending"]),
+        ),
+        *spending_comparison_lines,
         "",
         "TOTAL CASH FLOW",
-        f"Inflows:               {_money(summary['total_inflows'])}",
-        f"Outflows:             -{_money(summary['total_outflows'])}",
-        f"Net cash flow:          {_money(summary['total_account_net_cash_flow'])}",
+        _overview_line("Inflows", _money(summary["total_inflows"])),
+        _overview_line("Outflows", f"-{_money(summary['total_outflows'])}"),
+        _overview_line(
+            "Net cash flow", _money(summary["total_account_net_cash_flow"])
+        ),
         "",
         "CASH FLOW BY PLAID ACCOUNT",
     ]
     for account, flow in sorted(summary["cash_flow_by_account"].items()):
         lines += [
             account,
-            f"  Inflows:             {_money(flow['inflows'])}",
-            f"  Outflows:           -{_money(flow['outflows'])}",
-            f"  Net cash flow:        {_money(flow['net_cash_flow'])}",
+            _overview_line("  Inflows", _money(flow["inflows"])),
+            _overview_line("  Outflows", f"-{_money(flow['outflows'])}"),
+            _overview_line("  Net cash flow", _money(flow["net_cash_flow"])),
         ]
     lines += ["", "SPENDING BY CATEGORY"]
     lines += [
-        f"{key:<22}{_money(value):>12}"
+        _section_line(key, _money(value))
         for key, value in sorted(
             summary["spending_by_category"].items(), key=lambda x: x[1], reverse=True
         )
-    ] or ["Other                   $0.00"]
+    ] or [_section_line("Other", _money(0))]
     lines += ["", "TOP MERCHANTS"]
     lines += [
-        f"{key:<22}{_money(value):>12}"
+        _section_line(key, _money(value))
         for key, value in sorted(
             summary["spending_by_merchant"].items(), key=lambda x: x[1], reverse=True
         )[:5]
-    ] or ["None                   $0.00"]
+    ] or [_section_line("None", _money(0))]
     if summary["savings_rate"] is not None:
         lines += ["", f"Cash-flow savings rate: {summary['savings_rate'] * 100:.1f}%"]
     return "\n".join(lines) + "\n"
@@ -112,10 +150,14 @@ def generate_weekly_report(transactions, as_of_date=None):
         summary,
         previous,
         f"{start.strftime('%B %-d')} - {end.strftime('%B %-d, %Y')}",
+        "week",
         (
-            "4-week average spending/day: "
-            f"{_money(four_week_average)}",
-            f"Trend: {_pct(weekly_trend)}",
+            _overview_line(
+                "4-week average spending/day", _money(four_week_average)
+            ),
+            _overview_line(
+                "Difference vs 4-week average", _pct(weekly_trend)
+            ),
         ),
     )
 
@@ -141,13 +183,17 @@ def generate_monthly_report(transactions, as_of_date=None):
         summary,
         previous,
         start.strftime("%B %Y"),
+        "month",
         (
-            "3-month average spending/month: "
-            f"{_money(three_month_average)}",
-            f"Trend: {_pct(monthly_trend)}",
+            _overview_line(
+                "3-month average spending/month", _money(three_month_average)
+            ),
+            _overview_line(
+                "Difference vs 3-month average", _pct(monthly_trend)
+            ),
         ),
     )
-    return text.replace("Total spending:", "Spending:             ", 1)
+    return text
 
 
 def save_report(content, kind, period_end, reports_dir="data/reports"):
